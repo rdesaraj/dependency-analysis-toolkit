@@ -1,0 +1,26 @@
+{
+  "functions": [
+    {
+      "description": "Analyze missing components and calculate risk scores",
+      "name": "analyzeMissingComponents",
+      "parameters": {
+        "risk_threshold": {
+          "description": "Risk threshold level (LOW, MEDIUM, HIGH, CRITICAL)",
+          "required": false,
+          "type": "string"
+        },
+        "missing_components_s3_uri": {
+          "description": "S3 URI of missing components CSV file",
+          "required": false,
+          "type": "string"
+        },
+        "dependencies_s3_uri": {
+          "description": "S3 URI of dependencies JSON file for context",
+          "required": false,
+          "type": "string"
+        }
+      },
+      "requireConfirmation": "DISABLED"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Dependencies for Bedrock Agent Custom Resource Lambda Function
+# This function manages Bedrock agents and requires specific AWS SDK capabilities
+
+# Core AWS SDK - provided by Lambda runtime
+# boto3 - provided by Lambda runtime
+# urllib3 - for CloudFormation response handling
+urllib3>=1.26.0,<2.0.0
+
+# Built-in modules used:
+# json - built-in Python module
+# logging - built-in Python module
+# time - built-in Python module
+# typing - built-in Python module

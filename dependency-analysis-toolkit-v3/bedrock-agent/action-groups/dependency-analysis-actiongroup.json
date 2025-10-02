@@ -1,0 +1,26 @@
+{
+  "functions": [
+    {
+      "description": "Analyze ATX dependency relationships and transitive dependencies",
+      "name": "analyzeDependencies",
+      "parameters": {
+        "include_transitive": {
+          "description": "Include transitive dependencies",
+          "required": false,
+          "type": "boolean"
+        },
+        "dependencies_s3_uri": {
+          "description": "S3 URI of the ATX dependency JSON file",
+          "required": true,
+          "type": "string"
+        },
+        "query_text": {
+          "description": "Natural language query about dependencies",
+          "required": true,
+          "type": "string"
+        }
+      },
+      "requireConfirmation": "DISABLED"
+    }
+  ]
+}

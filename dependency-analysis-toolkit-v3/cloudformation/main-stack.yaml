@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ATX Dependency Analysis - Complete Solution Deployment'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'dependency-analysis'
+  Environment:
+    Type: String
+    Default: 'dev'
+  DeploymentBucket:
+    Type: String
+    Description: 'S3 bucket containing Lambda packages'
+  FoundationModel:
+    Type: String
+    Default: 'arn:aws:bedrock:us-east-1::inference-profile/anthropic.claude-3-7-sonnet-20250219-v1:0'
+
+Resources:
+  # Single IAM Role for everything
+  UnifiedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-unified-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+                - bedrock.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 's3:*'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${DeploymentBucket}/*'
+                  - !Sub 'arn:aws:s3:::${DeploymentBucket}'
+                  - !Sub 'arn:aws:s3:::${DataBucket}/*'
+                  - !Sub 'arn:aws:s3:::${DataBucket}'
+        - PolicyName: IAMPassRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'iam:PassRole'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-${Environment}-unified-role'
+
+  # Lambda permissions for Bedrock agent to invoke functions
+  DependencyAnalysisPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref DependencyAnalysisFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  MinimalDependencyFinderPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MinimalDependencyFinderFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  MissingComponentAnalysisPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MissingComponentAnalysisFunction
+      Action: lambda:InvokeFunction
+      Principal: bedrock.amazonaws.com
+      SourceArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*'
+
+  # Single S3 Bucket for data
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-${Environment}-data-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  # 3 Lambda Functions (minimal config)
+  DependencyAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-dependency-analysis'
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UnifiedRole.Arn
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda-packages/dependency-analysis.zip
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          DIRECT_DEPS_LIMIT: '50'
+          TRANSITIVE_CHAINS_LIMIT: '50'
+          DEPENDENTS_LIMIT: '50'
+          DEPENDENCIES_LIMIT: '50'
+          RESULTS_LIMIT: '100'
+          CHAINS_RESULTS_LIMIT: '50'
+          MAX_DEPTH: '50'
+          SAMPLE_LIMIT: '10'
+          DATABASE_KEYWORDS: 'database,sql,ddl,dcl,db2,table,schema,cursor'
+          DATABASE_TYPES: 'DDL,DCL,SQL,dcl,ddl'
+          CICS_KEYWORDS: 'cics,transaction,bms,screen,online'
+          CICS_TYPES: 'TRANSACTION,BMS,CICS_FILE,CSDCOMMAND'
+          BATCH_KEYWORDS: 'jcl,job,batch,procedure'
+          BATCH_TYPES: 'JCL,PROC,PRC'
+          COBOL_KEYWORDS: 'cobol,program,copybook'
+          COBOL_TYPES: 'COB,COBOL,CPY,CBL'
+
+  MinimalDependencyFinderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-minimal-dependency-finder'
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UnifiedRole.Arn
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda-packages/minimal-dependency-finder.zip
+      Layers: 
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:1
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          COMPONENT_WEIGHTS: '{"priority_types":{"JCL":1.0,"COB":1.0,"COBOL":1.0,"CPY":1.0,"BMS":1.0,"PROC":1.0,"CTL":1.0,"DDL":1.0,"DCL":1.0,"Missing Program":1.0,"Missing Database Object":1.0},"medium_types":{"TRANSACTION":0.7,"MAPSET":0.7,"Missing Dataset":0.7,"DATASET":0.7,"VSAM KSDS DATASET":0.7,"PS":0.7,"txt":0.7},"scoring_multipliers":{"priority_weight":1.0,"medium_weight":0.7,"missing_priority_penalty":2.0,"missing_medium_penalty":1.4,"cics_complexity_factor":0.5}}'
+
+  MissingComponentAnalysisFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-missing-component-analysis'
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UnifiedRole.Arn
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda-packages/missing-component-analysis.zip
+      Layers: 
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:1
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          RISK_PARENT_HIGH_THRESHOLD: '5'
+          RISK_PARENT_MEDIUM_THRESHOLD: '2'
+          RISK_PARENT_HIGH_SCORE: '30'
+          RISK_PARENT_MEDIUM_SCORE: '20'
+          RISK_PARENT_LOW_SCORE: '10'
+          RISK_CRITICAL_TYPE_SCORE: '40'
+          RISK_HIGH_TYPE_SCORE: '25'
+          RISK_MEDIUM_TYPE_SCORE: '15'
+          RISK_JCL_PARENT_BONUS: '20'
+          RISK_CRITICAL_THRESHOLD: '70'
+          RISK_HIGH_THRESHOLD: '50'
+          RISK_MEDIUM_THRESHOLD: '30'
+          OVERALL_RISK_HIGH_COUNT_THRESHOLD: '5'
+          OVERALL_RISK_MEDIUM_COUNT_THRESHOLD: '10'
+          CRITICAL_RISK_TYPES: 'Missing Program,Missing Copybook'
+          HIGH_RISK_TYPES: 'Missing Database Object,Missing Control Card'
+          MEDIUM_RISK_TYPES: 'Missing Dataset'
+          NO_RISK_TYPES: 'Missing Source File,Missing Header,System'
+
+  # Custom Resource to create Bedrock Agent with full S3 prompt
+  BedrockAgentCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt BedrockAgentCustomResourceFunction.Arn
+      AgentName: !Sub '${ProjectName}-${Environment}-agent'
+      AgentRoleArn: !GetAtt UnifiedRole.Arn
+      FoundationModel: !Ref FoundationModel
+      S3Bucket: !Ref DeploymentBucket
+      S3Key: 'bedrock-agent/agent-prompt.txt'
+      DependencyAnalysisLambdaArn: !GetAtt DependencyAnalysisFunction.Arn
+      MinimalDependencyFinderLambdaArn: !GetAtt MinimalDependencyFinderFunction.Arn
+      MissingComponentAnalysisLambdaArn: !GetAtt MissingComponentAnalysisFunction.Arn
+
+  BedrockAgentCustomResourceFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-bedrock-custom-resource'
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt UnifiedRole.Arn
+      Code:
+        S3Bucket: !Ref DeploymentBucket
+        S3Key: lambda-packages/bedrock-agent-custom-resource.zip
+      Timeout: 300
+
+Outputs:
+  DataBucketName:
+    Value: !Ref DataBucket
+  DependencyAnalysisFunctionArn:
+    Value: !GetAtt DependencyAnalysisFunction.Arn
+  MinimalDependencyFinderFunctionArn:
+    Value: !GetAtt MinimalDependencyFinderFunction.Arn
+  MissingComponentAnalysisFunctionArn:
+    Value: !GetAtt MissingComponentAnalysisFunction.Arn
+  BedrockAgentId:
+    Value: !GetAtt BedrockAgentCustomResource.AgentId
+  BedrockAgentAliasId:
+    Value: !GetAtt BedrockAgentCustomResource.AgentAliasId

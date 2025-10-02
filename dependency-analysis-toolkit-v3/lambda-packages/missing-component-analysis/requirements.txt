@@ -1,0 +1,12 @@
+# Dependencies for Missing Component Analysis Lambda Function
+# Core dependencies are provided by the shared Lambda layer
+# This file contains function-specific dependencies only
+
+# No additional dependencies required - all dependencies provided by shared layer
+# boto3 - provided by Lambda runtime and shared layer
+# pandas - provided by shared layer
+# json - built-in Python module
+# os - built-in Python module
+# typing - built-in Python module
+# urllib.parse - built-in Python module
+# io.StringIO - built-in Python module
