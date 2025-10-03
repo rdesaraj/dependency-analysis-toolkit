@@ -10,7 +10,7 @@
 
 ## Three Critical Problems Solved
 
-### 1. System Integration Discovery
+### 1. Technology stack and Integration Discovery
 **Problem**: Understanding what types of integrations exist in the mainframe system at high level
 **Solution**: Automated categorization of database, batch, online, and external system integrations  
 **Value**: Understanding system architecture and integration points without discovery calls
