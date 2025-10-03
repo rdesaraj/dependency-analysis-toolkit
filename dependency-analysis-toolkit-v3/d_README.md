@@ -28,7 +28,8 @@
 ---
 
 ## Architecture
-<img width="907" height="512" alt="image" src="https://github.com/user-attachments/assets/157cb6e3-5fa9-4dcf-8520-1d679a1005da" />
+<img width="940" height="513" alt="image" src="https://github.com/user-attachments/assets/0cd51dd1-26de-4436-94e0-3ba7d4e9b2cf" />
+
 
 
 ## Key Capabilities
