@@ -13,7 +13,7 @@
 ### 1. System Integration Discovery
 **Problem**: Understanding what types of integrations exist in the mainframe system at high level
 **Solution**: Automated categorization of database, batch, online, and external system integrations  
-**Value**: Immediate system architecture comprehension without discovery calls
+**Value**: Understanding system architecture and integration points without discovery calls
 
 ### 2. POC Candidate Identification  
 **Problem**: Selecting the right functionality to modernize first without domain expertise  
@@ -23,7 +23,7 @@
 ### 3. Missing Component Risk Assessment
 **Problem**: Understanding the development impact of missing system components  
 **Solution**: Risk analysis of missing programs and database objects across the application landscape  
-**Value**: Accurate effort estimation and development scope planning
+**Value**: Development scope planning
 
 ---
 
@@ -55,10 +55,13 @@
 
 ```
 "What are the integration types in this system?"
-→ Categorized breakdown of database, file, and external integrations
+→ Categorized breakdown of database, file, and external integrations (FTP, MQ etc)
 
 "Recommend POC candidates for modernization"  
 → Ranked list with complexity scores and component analysis
+
+"Compare POC recommendations"  
+→ Comparison table for recommended functions with dependencies, integrations ,missing components and complexity scoring
 
 "What missing components pose the highest risk?"
 → Prioritized list of missing elements with impact assessment
