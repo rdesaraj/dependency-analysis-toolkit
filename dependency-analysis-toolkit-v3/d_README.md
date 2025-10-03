@@ -27,6 +27,10 @@
 
 ---
 
+## Architecture
+<img width="907" height="512" alt="image" src="https://github.com/user-attachments/assets/157cb6e3-5fa9-4dcf-8520-1d679a1005da" />
+
+
 ## Key Capabilities
 
 - **Natural Language Interface**: Ask questions about system complexity in plain English
